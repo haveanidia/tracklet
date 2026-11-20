@@ -17,7 +17,9 @@
 </p>
 
 
-![Tracklet](/Screenshot.png)
+<p align="center">
+  <img src="assets/Screenshot.png" width="100%" alt="Tracklet motion tracking editor">
+</p>
 
 ## What is Tracklet?
 
