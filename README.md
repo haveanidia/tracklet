@@ -17,7 +17,7 @@
 </p>
 
 
-![Tracklet](Screenshot.png)
+![Tracklet](/Screenshot.png)
 
 ## What is Tracklet?
 
