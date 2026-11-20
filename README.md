@@ -1,6 +1,3 @@
-# tracklet
-Free, lightweight, browser-based motion tracking tool.
-
 # Tracklet
 
 <p align="center">
