@@ -1,0 +1,16 @@
+[package]
+name = "tracklet"
+version = "1.0.0"
+description = "Tracklet desktop shell"
+authors = ["Tracklet"]
+edition = "2021"
+
+[lib]
+name = "tracklet_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
