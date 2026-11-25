@@ -1,195 +1,93 @@
 # Tracklet
 
-<p align="center">
-  <strong>Motion tracking, without the overhead.</strong>
-  <br />
-  Free. Lightweight. Made for creators.
-</p>
+Local motion tracking studio, in the browser or as a desktop app. Import a clip, track points, regions or planar surfaces, lock a subject in frame or smooth the camera, attach overlays, then export the tracking data, a stabilized render, or a portable project file. Everything runs on your machine; nothing is uploaded.
 
-<p align="center">
-  Track objects, capture movement, and stabilize footage without opening a full video editing suite.
-</p>
+## Stack
 
----
+React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, OpenCV.js (`@techstark/opencv-js`), `mp4-muxer`, Canvas 2D, Web Workers, WebCodecs with a MediaRecorder WebM fallback, IndexedDB for autosave.
 
-<p align="center">
-  <em>Built independently. Free for everyone.</em>
-</p>
-
-
-<p align="center">
-  <img src="assets/Screenshot.png" width="100%" alt="Tracklet motion tracking editor">
-</p>
-
-## What is Tracklet?
-
-Tracklet is a free, open-source motion tracking tool built to make tracking video as simple as possible.
-
-I made it because I wanted to track objects in videos for montages and edits without having to open heavy editing software, deal with complicated workflows, or run into paid features and free trials just to get something tracked.
-
-Sometimes you don't need an entire editing suite. You just need to track something.
-
-Tracklet is designed around that idea. Import a video, select what you want to track, and let it do the work. It's lightweight, runs in your browser, and can be hosted locally on your own computer.
-
-No subscription. No unnecessary complexity. Just tracking.
-
-## Why Tracklet?
-
-Most video editors offer motion tracking as part of a much larger suite of tools. That's great when you need them, but overkill when you only want to track an object or get its movement.
-
-Tracklet focuses on making that process accessible.
-
-- **Free, without restrictions from a trial** — No subscription or paywall.
-- **Lightweight** — Focused on motion tracking instead of being a full video editing suite.
-- **Simple to use** — Designed to make tracking accessible without a steep learning curve.
-- **Runs locally** — Host it on your own computer and work through your browser.
-- **Made for edits** — Useful for montages, motion graphics, overlays, and stabilization.
-
-## Features
-
-- Point-based motion tracking
-- Video preview and timeline
-- Tracking visualization
-- Motion path generation
-- Tracking data and keyframes
-- Subject tracking
-- Video stabilization
-- Subject locking
-- Project workflow
-- Local video processing
-
-> Feature availability may vary as development continues. Some features are still being improved.
-
-## How to Use
-
-1. Open Tracklet on your local machine.
-2. Create a project.
-3. Import your video.
-4. Select the object or point you want to track.
-5. Start tracking.
-6. Review and refine the tracking result.
-7. Use the resulting motion data in your workflow.
-
-The goal is to spend less time setting things up and more time actually making your edit.
-
-## Who Is Tracklet For?
-
-Tracklet is built primarily for people who need motion tracking without the overhead of a full editing suite.
-
-It's especially useful for:
-
-- Video montages
-- Velocity edits
-- AMVs
-- Motion graphics
-- Object tracking
-- Subject-following effects
-- Camera stabilization
-- Attaching elements to moving objects
-
-Whether you're making a quick edit or experimenting with motion, Tracklet aims to make the process less tedious.
-
-## Installation
-
-Tracklet is designed to run locally.
-
-### Requirements
-
-- Node.js
-- npm
-- A modern Chromium-based browser or another supported browser
-
-### Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/tracklet.git
-cd tracklet
-```
-
-### Install dependencies
+## Run
 
 ```bash
 npm install
+npm run dev        # http://localhost:5173
+npm run build      # type-check + production bundle
+npm test           # unit tests (interpolation, transforms, exporters)
 ```
 
-### Start the development server
+The first tracking or stabilization job downloads/pre-bundles the ~13 MB OpenCV.js build. Jobs use a fresh worker and are terminated afterwards so OpenCV memory is reclaimed.
+
+## Desktop app
+
+Tracklet also ships as a Tauri 2 desktop app that loads the same Vite build. The Rust shell in `src-tauri/` only opens the window; all features stay in the shared frontend.
 
 ```bash
-npm run dev
+npm run tauri:dev     # desktop app with the Vite dev server
+npm run tauri:build   # production bundle + Windows installer
 ```
 
-Open the local address provided by Vite to start using Tracklet.
+Requirements: Rust (via [rustup](https://rustup.rs)) and the MSVC build tools with the Windows SDK. WebView2 is already present on Windows 10/11. The first build compiles the Rust dependencies.
 
-### Build for production
+Outputs:
 
-```bash
-npm run build
-```
+- `src-tauri/target/release/tracklet.exe`
+- `src-tauri/target/release/bundle/nsis/Tracklet_1.0.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/Tracklet_1.0.0_x64_en-US.msi`
 
-### Preview the production build
+The development app uses `http://localhost:5173`; the production app serves `dist/` from inside the bundle, so it never contacts a hosted site. HTML5 drag-and-drop is kept enabled (native OS drop handling is off) because video import uses the page's drop target.
 
-```bash
-npm run preview
-```
 
-## Privacy
+## Using it
 
-Tracklet is designed to run locally on your own computer.
+1. **Import** an MP4, WebM or MOV by drag-and-drop or the Import button. Decoding depends on the browser's codec support; if the browser cannot decode the file the import fails honestly instead of guessing metadata.
 
-Your videos are not meant to be uploaded to a Tracklet cloud service. The application is intended to keep your workflow local rather than rely on cloud processing.
+2. **Point tracker (P)** — click a feature, then **Track** forward or **Backward**. Tracking starts from the playhead using the nearest/interpolated keyframe.
 
-Refer to the application's implementation for the exact storage and processing behavior.
+3. **Region tracker (R)** — drag a box around a textured area. Affine Lucas–Kanade tracks the corners inside the box.
 
-## Tech Stack
+4. **Planar tracker (G)** — drag around a flat, detailed surface. ORB descriptors plus RANSAC homography track the plane. Experimental: strong perspective change, motion blur or low texture will lose it.
 
-Tracklet is built using web technologies to keep it accessible and lightweight.
+5. **Stabilizer (S)** — two modes, both in the right-hand inspector:
+   - **Subject Lock** holds a tracked point or region at a fixed anchor in the output frame. Track the subject first, choose the source track, set the anchor (default: frame centre) and optional H/V offset, then **Lock subject**. It reuses existing track coordinates and never invents motion.
+   - **Smooth Camera** analyzes background features in a worker, smooths the camera path, keeps intentional pans, and corrects rotation, jitter and scale drift.
 
-- TypeScript
-- React
-- Vite
-- HTML5 video
-- Canvas-based rendering
-- Browser APIs
+   Both modes share strength, smoothing, responsiveness, rotation correction and a dead zone. Adaptive zoom derives the required crop from the transform, keeps the aspect ratio and never stretches the picture; set maximum/minimum zoom, zoom smoothing and a safety margin. If the maximum is too low you get a warning while the subject stays locked. The viewer offers Original / A/B split / Stabilized, an anchor marker, a safe-frame overlay and the live zoom percentage. The timeline shows subject and output position, zoom, rotation and confidence with a per-frame readout. **Reset stabilization settings** restores defaults without touching the analysis or the tracks.
 
-Additional libraries may be used for tracking, video processing, and rendering.
+6. **Overlays (O)** — attach text, image or shape overlays to a tracked object and edit offset, size, rotation, scale, anchor, opacity and color in the inspector.
 
-## Roadmap
+7. **Edit keyframes** in the inspector (X/Y, width/height) or by dragging the marker in the viewer. Every correction is undoable (`Ctrl+Z`, `Ctrl+Shift+Z`).
 
-Tracklet is still actively being developed. Some things I want to improve:
+8. **Export** JSON, CSV, SVG motion paths, an After Effects `.jsx` (null layers, not an `.aep`), a stabilized H.264 MP4 (WebCodecs; real-time WebM fallback when the encoder rejects the config) or a `.tracklet.json` project.
 
-- [ ] Improve tracking accuracy and reliability.
-- [ ] Better handling of occlusion.
-- [ ] Better recovery when a tracked object leaves the frame.
-- [ ] More tracking options and controls.
-- [ ] Improve stabilization.
-- [ ] Expand export options.
-- [ ] Improve project saving and recovery.
-- [ ] Optimize performance on lower-end hardware.
-- [ ] Refine the interface and overall workflow.
+Video export applies the same baked warp as the preview at the original frame rate and aspect ratio (or a chosen output height) and preserves the source audio track. AAC audio is muxed with WebCodecs when the browser can encode it; otherwise the real-time WebM fallback keeps the source audio. If audio cannot be captured at all the dialog says so instead of dropping it silently.
 
-This roadmap isn't fixed. It will evolve as the project grows and feedback comes in.
+Shortcuts: `Space` play/pause, `←/→` step (Shift = 10), `Home/End`, `F` fit view, `V/P/R/G/S/O` tools.
 
-## Contributing
+## Projects and storage
 
-Tracklet is an independently developed open-source project. Contributions, feedback, bug reports, and feature ideas are welcome.
+Projects autosave to IndexedDB with their tracking data, overlays, stabilization corrections and the imported video blob. The most recent project is restored on reload. A `.tracklet.json` file does not embed video: open it on another machine and re-link the original clip.
 
-If you encounter a problem or have an idea:
+If the browser refuses to store the video blob (quota or private mode), tracking data is still saved and the viewer asks you to re-link the media.
 
-1. Check whether an issue already exists.
-2. Open an issue describing the problem or suggestion.
-3. If you'd like to contribute code, submit a pull request.
+## Limits
 
-I'm still improving Tracklet, so feedback is appreciated.
+- Stabilization cannot hide every border when the subject sits far from the anchor and the maximum zoom is reached. The subject is prioritised and the inspector warns; raise Maximum zoom or move the anchor closer to the subject path.
+- Video export is a stabilized render (corrections applied); overlays are burned in, tracking markers are not. The viewer's Original/A-B choice only affects the preview.
+- Exported audio is AAC in MP4 when the browser supports `AudioEncoder` for AAC; otherwise export falls back to a real-time WebM recording that carries the source audio track. A browser with neither path reports the missing audio.
+- MOV/ProRes support depends on the browser decoder; only codecs the browser can play are importable.
+- FFmpeg.wasm is not bundled. The fallback recorder captures in real time and can drop frames if the machine is busy.
+- Planar tracking is sensitive to texture and perspective; it is labeled experimental in the UI.
+- Tracking is frame-accurate only for constant-frame-rate sources; variable frame rate imports use the measured average fps (override it in Project settings).
+- Proxy resolutions (480p/720p/1080p) trade track precision for speed. Coordinates are always stored in source pixels.
+
+## Tests
+
+`npm test` covers pure logic only: keyframe interpolation/smoothing, Subject Lock and Smooth Camera transforms (translation, rotation, jitter, confidence loss, adaptive zoom limits, portrait/landscape coverage, preview/export parity) and the JSON/CSV/SVG/AE exporters. Worker/OpenCV and UI flows are verified manually in a browser.
 
 ## License
 
-This project is open source. See the `LICENSE` file for details.
+MIT License
 
----
+## Credits
 
-<p align="center">
-  <strong>Made independently. Built out of necessity. Free for everyone.</strong>
-  <br />
-  <br />
-  Tracklet — Track anything. Make something with it.
-</p>
+Built by the Tracklet team. Uses OpenCV.js, Zustand, Vite, Tailwind CSS and other open source tools.
